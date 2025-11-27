@@ -13,11 +13,12 @@ const VetRoute: React.FC<VetRouteProps> = ({ children }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (user.role !== 'vet') {
-    return <Navigate to="/" replace />;
+  if (user.role === 'vet' || user.role === 'admin') {
+    return <>{children}</>;
   }
+  return <Navigate to="/" replace />;
 
-  return <>{children}</>;
+  
 };
 
 export default VetRoute;

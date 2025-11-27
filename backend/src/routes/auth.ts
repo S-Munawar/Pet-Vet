@@ -3,18 +3,23 @@ import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import fetch from "cross-fetch";
 import { User, AdminProfile, VetProfile, PetOwnerProfile } from "../models/models.ts";
+import type { IAuthResponse, IRegisterRequest, ILoginRequest } from "../types/interfaces.ts";
+// import { UserRole } from "../../shared/types.ts";
 import { RefreshToken } from "../models/RefreshToken.ts";
 import { mailer } from "../utils/email.ts";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../utils/jwt.ts";
 import { getGoogleOAuthURL } from "../utils/google.ts";
 import { getMicrosoftOAuthURL } from "../utils/microsoft.ts";
-
+import licenseRoutes from "./licenses.ts";
 
 const router: Router = express.Router();
 
+// Mount license routes
+router.use('/licenses', licenseRoutes);
+
 router.post("/register", async (req, res) => {
   try {
-    const { name, email, password, role, licenseNumber } = req.body;
+    const { name, email, password, role, licenseNumber }: IRegisterRequest = req.body;
 
     // Validate license for vets
     if (role === 'vet') {
@@ -56,14 +61,14 @@ router.post("/register", async (req, res) => {
       
       // Claim the license
       const license = await VetLicense.findOneAndUpdate(
-        { licenseNumber: licenseNumber.toUpperCase(), status: 'available' },
+        { licenseNumber: licenseNumber!.toUpperCase(), status: 'available' },
         { status: 'claimed', claimedAt: new Date() },
         { new: true }
       );
       
       const vetProfile = await VetProfile.create({ 
         user_id: user._id,
-        licenseNumber: licenseNumber.toUpperCase()
+        licenseNumber: licenseNumber!.toUpperCase()
       });
       
       // Link license to vet profile
@@ -133,7 +138,7 @@ router.post("/manual-verify", async (req, res) => {
 });
 
 router.post("/login", async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password }: ILoginRequest = req.body;
 
   const user = await User.findOne({ email }).select("+password");
   if (!user || !user.password) return res.status(400).json({ message: "Invalid credentials" });
@@ -156,11 +161,13 @@ router.post("/login", async (req, res) => {
   user.lastLogin = new Date();
   await user.save();
 
-  return res.json({
+  const authResponse: IAuthResponse = {
     accessToken,
     refreshToken,
-    user: { email: user.email, name: user.name, role: user.role }
-  });
+    user: { id: user.id, email: user.email, name: user.name, role: user.role }
+  };
+  
+  return res.json(authResponse);
 });
 
 router.post("/refresh", async (req, res) => {

@@ -1,5 +1,6 @@
 import './App.css'
 import React from 'react'
+import { Toaster } from 'sonner';
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import {
   Home,
@@ -29,6 +30,7 @@ import ConsultedPets from './components/ConsultedPets'
 function App() {
   return (
     <BrowserRouter>
+    <Toaster position="top-center" />
     <AuthProvider>
       <div className="app-shell">
         <Navbar />

@@ -2,6 +2,7 @@ import express from "express";
 import type { Request, Response } from "express";
 import { connectDB } from "./config/db.ts";
 import authRoutes from "./routes/auth.ts";
+import licenseRoutes from "./routes/licenses.ts";
 import dotenv from "dotenv";
 dotenv.config();
 connectDB();
@@ -22,6 +23,7 @@ app.use((req: Request, res: Response, next: Function) => {
 });
 
 app.use("/auth", authRoutes);
+app.use("/api/licenses", licenseRoutes);
 
 app.get("/", (req: Request, res: Response) => {
   res.send("Hello from Express + TypeScript!");

@@ -2,8 +2,9 @@ import React, {
   useState,
   type ReactNode,
 } from 'react';
-import type { User, AuthResponse } from '../types/auth';
+import type { User, AuthResponse, RegisterRequest, LoginRequest } from '../types/interfaces';
 import { AuthContext } from '../types/AuthContextType';
+// import { UserRole } from '../../../shared/types';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 
@@ -45,10 +46,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const login = async (email: string, password: string) => {
+    const loginData: LoginRequest = { email, password };
     const res = await fetch(`${API_URL}/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify(loginData),
     });
 
     if (!res.ok) {
@@ -60,17 +62,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setAuthFromTokens(data);
   };
 
-  const register = async (data: {
-    name: string;
-    email: string;
-    password: string;
-    role: 'vet' | 'pet_owner';
-    licenseNumber?: string;
-  }) => {
+  const register = async (data: RegisterRequest) => {
     const res = await fetch(`${API_URL}/auth/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(data),
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data),
     });
 
     if (!res.ok) {
@@ -81,7 +77,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // For now: after register, just ask them to verify email and then login.
     // So we DO NOT auto-login here.
   };
-
+  
   const refreshAccessToken = async (): Promise<string | null> => {
     const refreshToken = localStorage.getItem('refreshToken');
     if (!refreshToken) return null;

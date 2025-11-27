@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 
 const Home = () => {
-  const { user, accessToken, logout } = useAuth()
+  const { user } = useAuth()
   
 
   
@@ -71,12 +71,32 @@ const Home = () => {
                     </Link>
                   )}
                   {user.role === 'admin' && (
-                    <Link 
-                      to="/admin" 
-                      className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-4 rounded-lg font-semibold text-lg transition duration-200 transform hover:scale-105 shadow-lg"
-                    >
-                      Admin Dashboard
-                    </Link>
+                    <>
+                      <Link 
+                        to="/admin" 
+                        className="bg-purple-600 hover:bg-purple-700 text-white px-8 py-4 rounded-lg font-semibold text-lg transition duration-200 transform hover:scale-105 shadow-lg"
+                      >
+                        Admin Dashboard
+                      </Link>
+                      <Link 
+                        to="/add-pet" 
+                        className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-4 rounded-lg font-semibold text-lg transition duration-200 transform hover:scale-105 shadow-lg"
+                      >
+                        Add Pet
+                      </Link>
+                      <Link 
+                        to="/consult" 
+                        className="bg-teal-600 hover:bg-teal-700 text-white px-8 py-4 rounded-lg font-semibold text-lg transition duration-200 transform hover:scale-105 shadow-lg"
+                      >
+                        Consult Vet
+                      </Link>
+                      <Link 
+                        to="/consulted-pets" 
+                        className="bg-orange-600 hover:bg-orange-700 text-white px-8 py-4 rounded-lg font-semibold text-lg transition duration-200 transform hover:scale-105 shadow-lg"
+                      >
+                        Consulted Pets
+                      </Link>
+                    </>
                   )}
                 </div>
               </div>

@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
+import type { RegisterRequest } from '../types/interfaces';
+import type { UserRole } from '../../../shared/types';
 
 const Register: React.FC = () => {
   const { register } = useAuth();
   const navigate = useNavigate();
 
   const [name, setName] = useState('');
-  const [role, setRole] = useState<'vet' | 'pet_owner'>('pet_owner');
+  const [role, setRole] = useState<UserRole>('pet_owner');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [licenseNumber, setLicenseNumber] = useState('');
@@ -23,7 +25,11 @@ const Register: React.FC = () => {
     setLoading(true);
 
     try {
-      await register({ name, email, password, role, licenseNumber });
+      const registrationData: RegisterRequest = { name, email, password, role };
+      if (role === 'vet' && licenseNumber) {
+        registrationData.licenseNumber = licenseNumber;
+      }
+      await register(registrationData);
       setSuccess('Registration successful!');
       navigate('/');
     } catch (err) {
@@ -66,10 +72,11 @@ const Register: React.FC = () => {
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Account Type</label>
-            <select 
-              value={role} 
-              onChange={e => setRole(e.target.value as 'vet' | 'pet_owner')}
+            <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-2">Account Type</label>
+            <select
+              id="role"
+              value={role}
+              onChange={e => setRole(e.target.value as UserRole)}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition duration-200"
             >
               <option value="pet_owner">Pet Owner</option>

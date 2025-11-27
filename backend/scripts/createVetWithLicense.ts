@@ -93,31 +93,36 @@ async function main() {
     console.log(`Created vet user ${vetEmail} (id: ${vetUser._id})`);
 
     // Create VetProfile
-    const vetProfile = await VetProfile.create({
+    const vetProfileData: any = {
       user_id: vetUser._id,
-      specialization: specialization || undefined,
-      experienceYears: typeof experienceYears === 'number' && !isNaN(experienceYears) ? experienceYears : undefined,
-      clinicName: clinicName || undefined,
-      clinicAddress: {
-        street: clinicStreet || undefined,
-        city: clinicCity || undefined,
-        state: clinicState || undefined,
-        zipCode: clinicZip || undefined,
-        country: clinicCountry || undefined,
-      },
       licenseNumber,
-      issuedBy: admin.email || undefined,
-    });
+      issuedBy: admin.email,
+    };
+    
+    if (specialization) vetProfileData.specialization = specialization;
+    if (experienceYears && !isNaN(experienceYears)) vetProfileData.experienceYears = experienceYears;
+    if (clinicName) vetProfileData.clinicName = clinicName;
+    
+    if (clinicStreet || clinicCity || clinicState || clinicZip || clinicCountry) {
+      vetProfileData.clinicAddress = {};
+      if (clinicStreet) vetProfileData.clinicAddress.street = clinicStreet;
+      if (clinicCity) vetProfileData.clinicAddress.city = clinicCity;
+      if (clinicState) vetProfileData.clinicAddress.state = clinicState;
+      if (clinicZip) vetProfileData.clinicAddress.zipCode = clinicZip;
+      if (clinicCountry) vetProfileData.clinicAddress.country = clinicCountry;
+    }
+    
+    const vetProfile = await VetProfile.create(vetProfileData);
 
-    console.log(`Created VetProfile (id: ${vetProfile._id}) for user ${vetUser.email}`);
+    console.log(`Created VetProfile (id: ${(vetProfile as any)._id}) for user ${vetUser.email}`);
 
     // Claim license
-    license.claimedBy = vetProfile._id as any;
+    license.claimedBy = (vetProfile as any)._id;
     license.claimedAt = new Date();
     license.status = 'claimed';
     await license.save();
 
-    console.log(`License ${licenseNumber} claimed by vet (profile id: ${vetProfile._id})`);
+    console.log(`License ${licenseNumber} claimed by vet (profile id: ${(vetProfile as any)._id})`);
 
     console.log('--- Summary ---');
     console.log(`Vet email: ${vetUser.email}`);

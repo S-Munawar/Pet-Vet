@@ -13,11 +13,13 @@ const PetOwnerRoute: React.FC<PetOwnerRouteProps> = ({ children }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (user.role !== 'pet_owner') {
-    return <Navigate to="/" replace />;
+  if (user.role === 'pet_owner' || user.role === 'admin') {
+    return <>{children}</>;
   }
 
-  return <>{children}</>;
+  return <Navigate to="/" replace />;
+
+  
 };
 
 export default PetOwnerRoute;
