@@ -73,9 +73,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const err = await res.json();
       throw new Error(err.message || 'Registration failed');
     }
-
-    // For now: after register, just ask them to verify email and then login.
-    // So we DO NOT auto-login here.
+    // If backend returned tokens (social registration / immediate login), use them
+    const payload = await res.json().catch(() => null);
+    if (payload && payload.accessToken && payload.refreshToken) {
+      setAuthFromTokens(payload as AuthResponse);
+    }
   };
   
   const refreshAccessToken = async (): Promise<string | null> => {

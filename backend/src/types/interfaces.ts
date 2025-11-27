@@ -31,6 +31,10 @@ export interface IRegisterRequest {
   password: string;
   role: 'vet' | 'pet_owner' | 'admin';
   licenseNumber?: string;
+  authProvider?: {
+    provider: 'google' | 'microsoft';
+    providerId: string;
+  };
 }
 
 export interface ILoginRequest {

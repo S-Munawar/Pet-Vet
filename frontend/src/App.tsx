@@ -20,6 +20,7 @@ import {
 } from './components'
 import { AuthProvider } from './context/AuthContext'
 import SocialAuth from './components/SocialAuth'
+import SocialRegister from './components/SocialRegister'
 import ProtectedRoute from './components/ProtectedRoute'
 import VerifyEmail from './components/VerifyEmail'
 import AdminRoute from './components/AdminRoute'
@@ -42,6 +43,7 @@ function App() {
             <Route path="/about" element={<About />} />
             <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/social-auth" element={<SocialAuth />} />
+            <Route path="/social-register" element={<SocialRegister />} />
             <Route path="/add-pet" element={<PetOwnerRoute><AddPet /></PetOwnerRoute>} />
             <Route path="/select-pet" element={<ProtectedRoute><SelectPet /></ProtectedRoute>} />
             <Route path="/consult" element={<PetOwnerRoute><ConsultVet /></PetOwnerRoute>} />

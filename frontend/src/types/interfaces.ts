@@ -18,6 +18,10 @@ export interface RegisterRequest {
   password: string;
   role: 'vet' | 'pet_owner' | 'admin';
   licenseNumber?: string;
+  authProvider?: {
+    provider: 'google' | 'microsoft';
+    providerId: string;
+  };
 }
 
 export interface LoginRequest {
@@ -139,7 +143,7 @@ export interface HealthRecord {
 export interface VetLicense {
   id: string;
   licenseNumber: string;
-  issuedBy: string;
+  issuedBy: User; // Referenced User object
   issueDate: string;
   status: 'available' | 'claimed' | 'suspended' | 'revoked';
   claimedBy?: string;

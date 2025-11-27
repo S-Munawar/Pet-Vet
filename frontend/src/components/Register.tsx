@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
 import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import type { RegisterRequest } from '../types/interfaces';
@@ -131,7 +132,31 @@ const Register: React.FC = () => {
           </button>
         </form>
         
-        <p className="text-center text-sm text-gray-600">
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-gray-300" />
+          </div>
+          <div className="relative flex justify-center text-sm py-4">
+            <span className="px-2 bg-white text-gray-500">Or register with</span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            onClick={() => { window.location.href = `${API_URL}/auth/google?flow=register`; }}
+            className="flex justify-center items-center px-4 py-3 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition duration-200"
+          >
+            Google
+          </button>
+          <button
+            onClick={() => { window.location.href = `${API_URL}/auth/microsoft?flow=register`; }}
+            className="flex justify-center items-center px-4 py-3 border border-gray-300 rounded-lg shadow-sm bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 transition duration-200"
+          >
+            Microsoft
+          </button>
+        </div>
+
+        <p className="text-center text-sm text-gray-600 mt-4">
           Already have an account?{' '}
           <a href="/login" className="font-medium text-green-600 hover:text-green-500">Sign in</a>
         </p>

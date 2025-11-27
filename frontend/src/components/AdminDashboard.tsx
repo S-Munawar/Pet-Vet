@@ -40,7 +40,7 @@ const AdminDashboard = () => {
         toast.error(errorData.message || 'Error adding license');
       }
     } catch (error) {
-      toast.error('Network error occurred');
+      toast.error('Network error occurred', { description: error instanceof Error ? error.message : '' });
     } finally {
       setLoading(false);
     }
@@ -109,11 +109,8 @@ const AdminDashboard = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                       {(() => {
-                        const issued = (license as any).issuedBy;
-                        if (!issued) return '-';
-                        if (typeof issued === 'string') return issued;
-                        if (typeof issued === 'object') return (issued._id ?? issued.email ?? '-') as string;
-                        return '-';
+                        if (!license) return '-';
+                        return license.issuedBy.name;
                       })()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">

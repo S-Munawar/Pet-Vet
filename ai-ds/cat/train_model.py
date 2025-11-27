@@ -4,7 +4,7 @@ import ast
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder
 from sklearn.metrics import classification_report, confusion_matrix
-from xgboost import XGBClassifier 
+from xgboost import XGBClassifier
 
 # --- 1. Load Data ---
 FILE_PATH = 'cat_health_dataset_supplemented.csv'

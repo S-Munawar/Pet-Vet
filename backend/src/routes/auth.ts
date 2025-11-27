@@ -2,7 +2,7 @@ import express, { Router } from "express";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import fetch from "cross-fetch";
-import { User, AdminProfile, VetProfile, PetOwnerProfile } from "../models/models.ts";
+import { User, AdminProfile, VetProfile, VetLicense, PetOwnerProfile } from "../models/models.ts";
 import type { IAuthResponse, IRegisterRequest, ILoginRequest } from "../types/interfaces.ts";
 // import { UserRole } from "../../shared/types.ts";
 import { RefreshToken } from "../models/RefreshToken.ts";
@@ -21,43 +21,32 @@ router.post("/register", async (req, res) => {
   try {
     const { name, email, password, role, licenseNumber }: IRegisterRequest = req.body;
 
-    // Validate license for vets
-    if (role === 'vet') {
-      if (!licenseNumber) {
-        return res.status(400).json({ message: "License number is required for veterinarians" });
-      }
-      
-      const { VetLicense } = await import('../models/models.ts');
-      const license = await VetLicense.findOne({ 
-        licenseNumber: licenseNumber.toUpperCase(), 
-        status: 'available' 
-      });
-      
-      if (!license) {
-        return res.status(400).json({ message: "Invalid or unavailable license number" });
-      }
-    }
-
     const exists = await User.findOne({ email });
     if (exists) return res.status(400).json({ message: "Email already exists" });
 
     const passwordHash = await bcrypt.hash(password, 12);
     const verificationToken = crypto.randomBytes(32).toString("hex");
 
-    const user = await User.create({
+    const userPayload: any = {
       name,
       email,
       password: passwordHash,
       role,
       verificationToken,
       emailVerified: true, // Bypass verification for now
-    });
+    };
+
+    if (req.body && req.body.authProvider) {
+      userPayload.authProviders = [req.body.authProvider];
+    }
+
+    const user = await User.create(userPayload);
 
     // Create role-specific profile
     if (role === 'admin') {
       await AdminProfile.create({ user_id: user._id });
-    } else if (role === 'vet') {
-      const { VetLicense } = await import('../models/models.ts');
+    } 
+    else if (role === 'vet') {
       
       // Claim the license
       const license = await VetLicense.findOneAndUpdate(
@@ -66,39 +55,58 @@ router.post("/register", async (req, res) => {
         { new: true }
       );
       
-      const vetProfile = await VetProfile.create({ 
-        user_id: user._id,
-        licenseNumber: licenseNumber!.toUpperCase()
-      });
-      
       // Link license to vet profile
       if (license) {
+        const vetProfile = await VetProfile.create({ 
+        user_id: user._id,
+        licenseNumber: licenseNumber!.toUpperCase()
+        });
         license.claimedBy = vetProfile._id;
         await license.save();
       }
-    } else if (role === 'pet_owner') {
+    } 
+    else if (role === 'pet_owner') {
       await PetOwnerProfile.create({ user_id: user._id });
     }
 
-    const verifyURL = `${process.env.CLIENT_URL}/verify-email?token=${verificationToken}`;
+    // const verifyURL = `${process.env.CLIENT_URL}/verify-email?token=${verificationToken}`;
 
-    try {
-      await mailer.sendMail({
-        to: email,
-        subject: "Verify your email",
-        html: `<p>Hello ${name},</p>
-               <p>Please verify your email by clicking:</p>
-               <a href="${verifyURL}" target="_blank">Verify Email</a>`
-      });
-      console.log('Verification email sent to:', email);
-    } catch (emailError) {
-      console.error('Email sending failed:', emailError);
-      console.log('Manual verification URL:', verifyURL);
-    }
+    // try {
+    //   await mailer.sendMail({
+    //     to: email,
+    //     subject: "Verify your email",
+    //     html: `<p>Hello ${name},</p>
+    //            <p>Please verify your email by clicking:</p>
+    //            <a href="${verifyURL}" target="_blank">Verify Email</a>`
+    //   });
+    //   console.log('Verification email sent to:', email);
+    // } catch (emailError) {
+    //   console.error('Email sending failed:', emailError);
+    //   console.log('Manual verification URL:', verifyURL);
+    // }
 
-    return res.status(201).json({
-      message: "Registration successful! You can now login."
+    // After creating role-specific profiles, sign tokens to log the user in immediately
+    const accessToken = signAccessToken(user.id);
+    const refreshToken = signRefreshToken(user.id);
+
+    // Persist refresh token
+    await RefreshToken.create({
+      user: user._id,
+      token: refreshToken,
+      expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30)
     });
+
+    // Update lastLogin
+    user.lastLogin = new Date();
+    await user.save();
+
+    const authResponse: IAuthResponse = {
+      accessToken,
+      refreshToken,
+      user: { id: user.id, email: user.email, name: user.name, role: user.role }
+    };
+
+    return res.status(201).json(authResponse);
 
   } catch (err) {
     console.error(err);
@@ -194,7 +202,12 @@ router.post("/logout", async (req, res) => {
 });
 
 router.get("/google", (req, res) => {
-  return res.redirect(getGoogleOAuthURL());
+  const flow = req.query.flow as string | undefined;
+  let state: string | undefined;
+  if (flow === 'register') {
+    state = Buffer.from(JSON.stringify({ flow: 'register' })).toString('base64');
+  }
+  return res.redirect(getGoogleOAuthURL(state));
 });
 
 router.get("/google/callback", async (req, res) => {
@@ -227,35 +240,39 @@ router.get("/google/callback", async (req, res) => {
 
     if (!email) return res.status(400).json({ message: "Email not provided" });
 
+    // If the OAuth flow was initiated for registration, redirect to social-register
+    const rawState = req.query.state as string | undefined;
+    if (rawState) {
+      try {
+        const stateObj = JSON.parse(Buffer.from(rawState, 'base64').toString('utf8'));
+        if (stateObj && stateObj.flow === 'register') {
+          const redirectUrl = `${process.env.CLIENT_URL}/social-register?provider=google&email=${encodeURIComponent(email)}&name=${encodeURIComponent(name || '')}&providerId=${encodeURIComponent(sub)}`;
+          return res.redirect(redirectUrl);
+        }
+      } catch (err) {
+        console.warn('Invalid state parameter', err);
+      }
+    }
+
     // Find by provider
     let user = await User.findOne({
       authProviders: { $elemMatch: { provider: "google", providerId: sub } }
     });
 
-    // If not found, check if email exists → link provider
+    // If not found by provider, try to find by email and link provider.
+    // Do NOT auto-create new users via social login; require a prior registration.
     if (!user) {
       user = await User.findOne({ email });
 
       if (user) {
-        user.authProviders.push({
-          provider: "google",
-          providerId: sub
-        });
+        // Link social provider to existing account
+        user.authProviders.push({ provider: "google", providerId: sub });
+        await user.save();
       } else {
-        // Create new social-only user (default to pet_owner)
-        user = await User.create({
-          name,
-          email,
-          emailVerified: true, // Google email is verified
-          role: "pet_owner",   // Social auth defaults to pet_owner
-          authProviders: [{ provider: "google", providerId: sub }],
-        });
-        
-        // Create pet owner profile for social users
-        await PetOwnerProfile.create({ user_id: user._id });
+        // No existing account — redirect to client with an error so user registers first
+        const redirectUrl = `${process.env.CLIENT_URL}/social-auth?error=account_not_found&provider=google&email=${encodeURIComponent(email)}`;
+        return res.redirect(redirectUrl);
       }
-
-      await user.save();
     }
 
     // Issue tokens
@@ -299,7 +316,12 @@ router.get("/google/callback", async (req, res) => {
 });
 
 router.get("/microsoft", (req, res) => {
-  return res.redirect(getMicrosoftOAuthURL());
+  const flow = req.query.flow as string | undefined;
+  let state: string | undefined;
+  if (flow === 'register') {
+    state = Buffer.from(JSON.stringify({ flow: 'register' })).toString('base64');
+  }
+  return res.redirect(getMicrosoftOAuthURL(state));
 });
 
 router.get("/microsoft/callback", async (req, res) => {
@@ -329,6 +351,20 @@ router.get("/microsoft/callback", async (req, res) => {
 
     if (!email) return res.status(400).json({ message: "Email missing from Microsoft account" });
 
+    // If the OAuth flow was initiated for registration, redirect to social-register
+    const rawState = req.query.state as string | undefined;
+    if (rawState) {
+      try {
+        const stateObj = JSON.parse(Buffer.from(rawState, 'base64').toString('utf8'));
+        if (stateObj && stateObj.flow === 'register') {
+          const redirectUrl = `${process.env.CLIENT_URL}/social-register?provider=microsoft&email=${encodeURIComponent(email)}&name=${encodeURIComponent(name || '')}&providerId=${encodeURIComponent(sub)}`;
+          return res.redirect(redirectUrl);
+        }
+      } catch (err) {
+        console.warn('Invalid state parameter', err);
+      }
+    }
+
     // Find user by provider
     let user = await User.findOne({
       authProviders: { $elemMatch: { provider: "microsoft", providerId: sub } }
@@ -339,24 +375,14 @@ router.get("/microsoft/callback", async (req, res) => {
       user = await User.findOne({ email });
 
       if (user) {
-        user.authProviders.push({
-          provider: "microsoft",
-          providerId: sub
-        });
+        // Link provider to existing account
+        user.authProviders.push({ provider: "microsoft", providerId: sub });
+        await user.save();
       } else {
-        user = await User.create({
-          name: name ?? email.split("@")[0],
-          email,
-          role: "pet_owner",   // Social auth defaults to pet_owner
-          emailVerified: true, // Microsoft gives verified email
-          authProviders: [{ provider: "microsoft", providerId: sub }],
-        });
-        
-        // Create pet owner profile for social users
-        await PetOwnerProfile.create({ user_id: user._id });
+        // Do not auto-register via Microsoft OAuth. Redirect with error.
+        const redirectUrl = `${process.env.CLIENT_URL}/social-auth?error=account_not_found&provider=microsoft&email=${encodeURIComponent(email)}`;
+        return res.redirect(redirectUrl);
       }
-
-      await user.save();
     }
 
     // Issue JWTs
