@@ -41,7 +41,7 @@ function App() {
             <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/social-auth" element={<SocialAuth />} />
             <Route path="/add-pet" element={<PetOwnerRoute><AddPet /></PetOwnerRoute>} />
-            <Route path="/select-pet" element={<PetOwnerRoute><SelectPet /></PetOwnerRoute>} />
+            <Route path="/select-pet" element={<ProtectedRoute><SelectPet /></ProtectedRoute>} />
             <Route path="/consult" element={<PetOwnerRoute><ConsultVet /></PetOwnerRoute>} />
             <Route path="/ai" element={<ProtectedRoute><AIPetAdvisor /></ProtectedRoute>} />
             <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />

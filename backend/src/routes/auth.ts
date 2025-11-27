@@ -14,7 +14,24 @@ const router: Router = express.Router();
 
 router.post("/register", async (req, res) => {
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role, licenseNumber } = req.body;
+
+    // Validate license for vets
+    if (role === 'vet') {
+      if (!licenseNumber) {
+        return res.status(400).json({ message: "License number is required for veterinarians" });
+      }
+      
+      const { VetLicense } = await import('../models/models.ts');
+      const license = await VetLicense.findOne({ 
+        licenseNumber: licenseNumber.toUpperCase(), 
+        status: 'available' 
+      });
+      
+      if (!license) {
+        return res.status(400).json({ message: "Invalid or unavailable license number" });
+      }
+    }
 
     const exists = await User.findOne({ email });
     if (exists) return res.status(400).json({ message: "Email already exists" });
@@ -35,7 +52,25 @@ router.post("/register", async (req, res) => {
     if (role === 'admin') {
       await AdminProfile.create({ user_id: user._id });
     } else if (role === 'vet') {
-      await VetProfile.create({ user_id: user._id });
+      const { VetLicense } = await import('../models/models.ts');
+      
+      // Claim the license
+      const license = await VetLicense.findOneAndUpdate(
+        { licenseNumber: licenseNumber.toUpperCase(), status: 'available' },
+        { status: 'claimed', claimedAt: new Date() },
+        { new: true }
+      );
+      
+      const vetProfile = await VetProfile.create({ 
+        user_id: user._id,
+        licenseNumber: licenseNumber.toUpperCase()
+      });
+      
+      // Link license to vet profile
+      if (license) {
+        license.claimedBy = vetProfile._id;
+        await license.save();
+      }
     } else if (role === 'pet_owner') {
       await PetOwnerProfile.create({ user_id: user._id });
     }
@@ -200,14 +235,17 @@ router.get("/google/callback", async (req, res) => {
           providerId: sub
         });
       } else {
-        // Create new social-only user
+        // Create new social-only user (default to pet_owner)
         user = await User.create({
           name,
           email,
           emailVerified: true, // Google email is verified
-          role: "pet_owner",   // default; can adjust
+          role: "pet_owner",   // Social auth defaults to pet_owner
           authProviders: [{ provider: "google", providerId: sub }],
         });
+        
+        // Create pet owner profile for social users
+        await PetOwnerProfile.create({ user_id: user._id });
       }
 
       await user.save();
@@ -224,7 +262,7 @@ router.get("/google/callback", async (req, res) => {
     });
 
     // Redirect or respond JSON
-    const redirectUrl = `${process.env.CLIENT_URL}` +
+    const redirectUrl = `${process.env.CLIENT_URL}/social-auth` +
     `?accessToken=${accessToken}` +
     `&refreshToken=${refreshToken}` +
     `&user=${encodeURIComponent(JSON.stringify({
@@ -302,10 +340,13 @@ router.get("/microsoft/callback", async (req, res) => {
         user = await User.create({
           name: name ?? email.split("@")[0],
           email,
-          role: "pet_owner",   // default
+          role: "pet_owner",   // Social auth defaults to pet_owner
           emailVerified: true, // Microsoft gives verified email
           authProviders: [{ provider: "microsoft", providerId: sub }],
         });
+        
+        // Create pet owner profile for social users
+        await PetOwnerProfile.create({ user_id: user._id });
       }
 
       await user.save();
@@ -330,7 +371,7 @@ router.get("/microsoft/callback", async (req, res) => {
     // });
 
     // instead of res.json({ accessToken, refreshToken, user })
-    const redirectUrl = `${process.env.CLIENT_URL}` +
+    const redirectUrl = `${process.env.CLIENT_URL}/social-auth` +
       `?accessToken=${accessToken}` +
       `&refreshToken=${refreshToken}` +
       `&user=${encodeURIComponent(JSON.stringify({

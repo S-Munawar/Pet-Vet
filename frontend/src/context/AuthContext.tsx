@@ -32,12 +32,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [loading] = useState(false);
 
   const setAuthFromTokens = (auth: AuthResponse) => {
+    console.log('setAuthFromTokens called with:', auth);
     setUser(auth.user);
     setAccessToken(auth.accessToken);
 
     localStorage.setItem('user', JSON.stringify(auth.user));
     localStorage.setItem('refreshToken', auth.refreshToken);
     sessionStorage.setItem('accessToken', auth.accessToken);
+    
+    console.log('Auth tokens set - User:', auth.user);
+    console.log('Auth tokens set - AccessToken stored:', !!auth.accessToken);
   };
 
   const login = async (email: string, password: string) => {
@@ -61,6 +65,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     email: string;
     password: string;
     role: 'vet' | 'pet_owner';
+    licenseNumber?: string;
   }) => {
     const res = await fetch(`${API_URL}/auth/register`, {
       method: 'POST',

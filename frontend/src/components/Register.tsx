@@ -10,6 +10,7 @@ const Register: React.FC = () => {
   const [role, setRole] = useState<'vet' | 'pet_owner'>('pet_owner');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [licenseNumber, setLicenseNumber] = useState('');
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +23,7 @@ const Register: React.FC = () => {
     setLoading(true);
 
     try {
-      await register({ name, email, password, role });
+      await register({ name, email, password, role, licenseNumber });
       setSuccess('Registration successful!');
       navigate('/');
     } catch (err) {
@@ -99,6 +100,20 @@ const Register: React.FC = () => {
               required
             />
           </div>
+
+          {role === 'vet' && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">License Number</label>
+              <input
+                type="text"
+                value={licenseNumber}
+                onChange={e => setLicenseNumber(e.target.value.toUpperCase())}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition duration-200"
+                placeholder="Enter your veterinary license number"
+                required
+              />
+            </div>
+          )}
 
           <button
             type="submit"
