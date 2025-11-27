@@ -107,6 +107,8 @@ const SocialRegister: React.FC = () => {
               type="email"
               value={email}
               readOnly
+              title="Email address"
+              placeholder="Email address"
               className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-gray-100"
             />
           </div>

@@ -1,99 +1,112 @@
 import express, { Router } from "express";
+import type { Request, Response } from "express";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import fetch from "cross-fetch";
-import { User, AdminProfile, VetProfile, VetLicense, PetOwnerProfile } from "../models/models.ts";
-import type { IAuthResponse, IRegisterRequest, ILoginRequest } from "../types/interfaces.ts";
-// import { UserRole } from "../../shared/types.ts";
-import { RefreshToken } from "../models/RefreshToken.ts";
+import { User, AdminProfile, VetProfile, VetLicense, PetOwnerProfile, RefreshToken } from "../models/models.ts";
+import type { IUser, IVetProfile, IAuthResponse, IRegisterRequest, ILoginRequest } from "../types/interfaces.ts";
 import { mailer } from "../utils/email.ts";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../utils/jwt.ts";
 import { getGoogleOAuthURL } from "../utils/google.ts";
 import { getMicrosoftOAuthURL } from "../utils/microsoft.ts";
 import licenseRoutes from "./licenses.ts";
+import mongoose, { Schema, model, Document } from "mongoose";
 
 const router: Router = express.Router();
 
 // Mount license routes
 router.use('/licenses', licenseRoutes);
 
-router.post("/register", async (req, res) => {
+router.post("/register", async (req: Request, res: Response) => {
   try {
-    const { name, email, password, role, licenseNumber }: IRegisterRequest = req.body;
+    const { name, email, password, role, licenseNumber, authProvider }: IRegisterRequest = req.body;
+
+    // Validation
+    if (!name || !email || !role) {
+      return res.status(400).json({ message: "Missing required fields" });
+    }
+
+    if (role === 'vet' && !licenseNumber) {
+      return res.status(400).json({ message: "License number required for vets" });
+    }
 
     const exists = await User.findOne({ email });
-    if (exists) return res.status(400).json({ message: "Email already exists" });
+    if (exists) {
+      return res.status(400).json({ message: "Email already exists" });
+    }
 
-    const passwordHash = await bcrypt.hash(password, 12);
+    // Hash password if provided (not required for social login)
+    let passwordHash: string | undefined;
+    if (password) {
+      passwordHash = await bcrypt.hash(password, 12);
+    }
+
     const verificationToken = crypto.randomBytes(32).toString("hex");
 
-    const userPayload: any = {
+    const userPayload: Partial<IUser> = {
       name,
       email,
-      password: passwordHash,
       role,
       verificationToken,
       emailVerified: true, // Bypass verification for now
     };
 
-    if (req.body && req.body.authProvider) {
-      userPayload.authProviders = [req.body.authProvider];
+    if (passwordHash) {
+      userPayload.password = passwordHash;
     }
 
-    const user = await User.create(userPayload);
+    if (authProvider) {
+      userPayload.authProviders = [authProvider];
+    }
+
+    const user = (await User.create(userPayload)) as IUser;
 
     // Create role-specific profile
     if (role === 'admin') {
       await AdminProfile.create({ user_id: user._id });
     } 
     else if (role === 'vet') {
-      
-      // Claim the license
-      const license = await VetLicense.findOneAndUpdate(
-        { licenseNumber: licenseNumber!.toUpperCase(), status: 'available' },
-        { status: 'claimed', claimedAt: new Date() },
-        { new: true }
-      );
-      
-      // Link license to vet profile
-      if (license) {
-        const vetProfile = await VetProfile.create({ 
-        user_id: user._id,
-        licenseNumber: licenseNumber!.toUpperCase()
-        });
-        license.claimedBy = vetProfile._id;
-        await license.save();
+      if (!licenseNumber) {
+        return res.status(400).json({ message: "License number required for vets" });
       }
+
+      // Claim the license
+      const license = await VetLicense.findOne({
+        licenseNumber: licenseNumber.toUpperCase(),
+        status: 'available'
+      });
+
+      if (!license) {
+        // Delete the user since license claim failed
+        await User.findByIdAndDelete(user._id);
+        return res.status(400).json({ message: "Invalid or already claimed license" });
+      }
+
+      // Create vet profile
+      const vetProfile = (await VetProfile.create({
+        user_id: user._id,
+        licenseNumber: licenseNumber.toUpperCase()
+      })) as IVetProfile;
+
+      // Update license
+      license.status = 'claimed';
+      license.claimedBy = vetProfile._id;
+      license.claimedAt = new Date();
+      await license.save();
     } 
     else if (role === 'pet_owner') {
       await PetOwnerProfile.create({ user_id: user._id });
     }
 
-    // const verifyURL = `${process.env.CLIENT_URL}/verify-email?token=${verificationToken}`;
-
-    // try {
-    //   await mailer.sendMail({
-    //     to: email,
-    //     subject: "Verify your email",
-    //     html: `<p>Hello ${name},</p>
-    //            <p>Please verify your email by clicking:</p>
-    //            <a href="${verifyURL}" target="_blank">Verify Email</a>`
-    //   });
-    //   console.log('Verification email sent to:', email);
-    // } catch (emailError) {
-    //   console.error('Email sending failed:', emailError);
-    //   console.log('Manual verification URL:', verifyURL);
-    // }
-
-    // After creating role-specific profiles, sign tokens to log the user in immediately
-    const accessToken = signAccessToken(user.id);
-    const refreshToken = signRefreshToken(user.id);
+    // Sign tokens
+    const accessToken = signAccessToken(user._id.toString());
+    const refreshToken = signRefreshToken(user._id.toString());
 
     // Persist refresh token
     await RefreshToken.create({
       user: user._id,
       token: refreshToken,
-      expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30)
+      expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30) // 30 days
     });
 
     // Update lastLogin
@@ -101,117 +114,176 @@ router.post("/register", async (req, res) => {
     await user.save();
 
     const authResponse: IAuthResponse = {
-      accessToken,
-      refreshToken,
-      user: { id: user.id, email: user.email, name: user.name, role: user.role }
+      success: true,
+      message: "Registration successful",
+      data: {
+        accessToken,
+        refreshToken,
+        user: {
+          id: user._id.toString(),
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          emailVerified: user.emailVerified
+        }
+      }
     };
 
     return res.status(201).json(authResponse);
 
   } catch (err) {
-    console.error(err);
+    console.error('Registration error:', err);
     return res.status(500).json({ message: "Server error" });
   }
 });
 
-router.get("/verify-email", async (req, res) => {
+router.get("/verify-email", async (req: Request, res: Response) => {
   const { token } = req.query;
   
   if (!token || typeof token !== 'string') {
     return res.status(400).json({ message: "Invalid token" });
   }
 
-  const user = await User.findOne({ verificationToken: token });
-  if (!user) return res.status(400).json({ message: "Invalid token" });
+  const user = await User.findOne({ verificationToken: token }) as IUser | null;
+  if (!user) {
+    return res.status(400).json({ message: "Invalid token" });
+  }
 
   user.emailVerified = true;
-  user.verificationToken = null;
+  user.verificationToken = undefined;
   await user.save();
 
   return res.json({ message: "Email verified successfully!" });
 });
 
-// Temporary manual verification for testing
-router.post("/manual-verify", async (req, res) => {
+router.post("/manual-verify", async (req: Request, res: Response) => {
   const { email } = req.body;
   
-  const user = await User.findOne({ email });
-  if (!user) return res.status(400).json({ message: "User not found" });
+  if (!email) {
+    return res.status(400).json({ message: "Email required" });
+  }
+
+  const user = await User.findOne({ email }) as IUser | null;
+  if (!user) {
+    return res.status(400).json({ message: "User not found" });
+  }
 
   user.emailVerified = true;
-  user.verificationToken = null;
+  user.verificationToken = undefined;
   await user.save();
 
   return res.json({ message: "Email verified manually!" });
 });
 
-router.post("/login", async (req, res) => {
-  const { email, password }: ILoginRequest = req.body;
+router.post("/login", async (req: Request, res: Response) => {
+  try {
+    const { email, password }: ILoginRequest = req.body;
 
-  const user = await User.findOne({ email }).select("+password");
-  if (!user || !user.password) return res.status(400).json({ message: "Invalid credentials" });
+    if (!email || !password) {
+      return res.status(400).json({ message: "Email and password required" });
+    }
 
-  const valid = await bcrypt.compare(password, user.password);
-  if (!valid) return res.status(400).json({ message: "Invalid credentials" });
+    const user = (await User.findOne({ email }).select("+password")) as (IUser & { password?: string }) | null;
+    if (!user || !user.password) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
 
-  if (!user.emailVerified)
-    return res.status(403).json({ message: "Email not verified" });
+    const valid = await bcrypt.compare(password, user.password);
+    if (!valid) {
+      return res.status(400).json({ message: "Invalid credentials" });
+    }
+    if (!user.emailVerified) {
+      return res.status(403).json({ message: "Email not verified" });
+    }
 
-  const accessToken = signAccessToken(user.id);
-  const refreshToken = signRefreshToken(user.id);
+    const accessToken = signAccessToken(user._id.toString());
+    const refreshToken = signRefreshToken(user._id.toString());
 
-  await RefreshToken.create({
-    user: user._id,
-    token: refreshToken,
-    expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30)
-  });
+    await RefreshToken.create({
+      user: user._id,
+      token: refreshToken,
+      expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30)
+    });
 
-  user.lastLogin = new Date();
-  await user.save();
+    user.lastLogin = new Date();
+    await user.save();
 
-  const authResponse: IAuthResponse = {
-    accessToken,
-    refreshToken,
-    user: { id: user.id, email: user.email, name: user.name, role: user.role }
-  };
-  
-  return res.json(authResponse);
+    const authResponse: IAuthResponse = {
+      success: true,
+      message: "Login successful",
+      data: {
+        accessToken,
+        refreshToken,
+        user: {
+          id: user._id.toString(),
+          email: user.email,
+          name: user.name,
+          role: user.role,
+          emailVerified: user.emailVerified
+        }
+      }
+    };
+    
+    return res.json(authResponse);
+  } catch (err) {
+    console.error('Login error:', err);
+    return res.status(500).json({ message: "Server error" });
+  }
 });
 
-router.post("/refresh", async (req, res) => {
-  const { refreshToken } = req.body;
-  if (!refreshToken) return res.status(400).json({ message: "Missing token" });
-
-  const stored = await RefreshToken.findOne({ token: refreshToken, revoked: false });
-  if (!stored) return res.status(401).json({ message: "Invalid refresh token" });
-
+router.post("/refresh", async (req: Request, res: Response) => {
   try {
-    const decoded = verifyRefreshToken(refreshToken) as any;
+    const { refreshToken } = req.body;
+    
+    if (!refreshToken) {
+      return res.status(400).json({ message: "Missing token" });
+    }
+
+    const stored = await RefreshToken.findOne({ token: refreshToken, revoked: false });
+    if (!stored) {
+      return res.status(401).json({ message: "Invalid refresh token" });
+    }
+
+    const decoded = verifyRefreshToken(refreshToken) as { sub: string };
     const newAccessToken = signAccessToken(decoded.sub);
 
     return res.json({ accessToken: newAccessToken });
-  } catch {
+  } catch (err) {
+    console.error('Refresh token error:', err);
     return res.status(401).json({ message: "Token expired" });
   }
 });
 
-router.post("/logout", async (req, res) => {
+router.post("/logout", async (req: Request, res: Response) => {
   const { refreshToken } = req.body;
-  await RefreshToken.findOneAndUpdate({ token: refreshToken }, { revoked: true });
+  
+  if (refreshToken) {
+    await RefreshToken.findOneAndUpdate(
+      { token: refreshToken },
+      { revoked: true }
+    );
+  }
+  
   return res.json({ message: "Logged out successfully" });
 });
 
-router.get("/google", (req, res) => {
+router.get("/google", (req: Request, res: Response) => {
   const flow = req.query.flow as string | undefined;
   let state: string | undefined;
+  
   if (flow === 'register') {
     state = Buffer.from(JSON.stringify({ flow: 'register' })).toString('base64');
   }
+  
   return res.redirect(getGoogleOAuthURL(state));
 });
 
-router.get("/google/callback", async (req, res) => {
+router.get("/google/callback", async (req: Request, res: Response) => {
   const code = req.query.code as string;
+
+  if (!code) {
+    return res.status(400).json({ message: "No authorization code" });
+  }
 
   try {
     // Exchange code for tokens
@@ -230,17 +302,21 @@ router.get("/google/callback", async (req, res) => {
     const tokens = await tokenResponse.json();
     const idToken = tokens.id_token;
 
-    if (!idToken) return res.status(400).json({ message: "No ID Token" });
+    if (!idToken) {
+      return res.status(400).json({ message: "No ID Token" });
+    }
 
     const payload = JSON.parse(
       Buffer.from(idToken.split(".")[1], "base64").toString()
     );
 
-    const { email, name, picture, sub } = payload;
+    const { email, name, sub } = payload;
 
-    if (!email) return res.status(400).json({ message: "Email not provided" });
+    if (!email) {
+      return res.status(400).json({ message: "Email not provided" });
+    }
 
-    // If the OAuth flow was initiated for registration, redirect to social-register
+    // Check if this is a registration flow
     const rawState = req.query.state as string | undefined;
     if (rawState) {
       try {
@@ -255,29 +331,28 @@ router.get("/google/callback", async (req, res) => {
     }
 
     // Find by provider
-    let user = await User.findOne({
+    let user = (await User.findOne({
       authProviders: { $elemMatch: { provider: "google", providerId: sub } }
-    });
+    })) as IUser | null;
 
-    // If not found by provider, try to find by email and link provider.
-    // Do NOT auto-create new users via social login; require a prior registration.
+    // If not found by provider, try email
     if (!user) {
-      user = await User.findOne({ email });
+      user = (await User.findOne({ email })) as IUser | null;
 
       if (user) {
         // Link social provider to existing account
         user.authProviders.push({ provider: "google", providerId: sub });
         await user.save();
       } else {
-        // No existing account — redirect to client with an error so user registers first
+        // No existing account
         const redirectUrl = `${process.env.CLIENT_URL}/social-auth?error=account_not_found&provider=google&email=${encodeURIComponent(email)}`;
         return res.redirect(redirectUrl);
       }
     }
 
     // Issue tokens
-    const accessToken = signAccessToken(user.id);
-    const refreshToken = signRefreshToken(user.id);
+    const accessToken = signAccessToken(user._id.toString());
+    const refreshToken = signRefreshToken(user._id.toString());
 
     await RefreshToken.create({
       user: user._id,
@@ -285,27 +360,18 @@ router.get("/google/callback", async (req, res) => {
       expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30)
     });
 
-    // Redirect or respond JSON
-    const redirectUrl = `${process.env.CLIENT_URL}/social-auth` +
-    `?accessToken=${accessToken}` +
-    `&refreshToken=${refreshToken}` +
-    `&user=${encodeURIComponent(JSON.stringify({
-      id: user.id,
-      email: user.email,
-      name: user.name,
-      role: user.role
-    }))}`;
+    user.lastLogin = new Date();
+    await user.save();
 
-    // return res.json({
-    //   message: "Google login successful",
-    //   accessToken,
-    //   refreshToken,
-    //   user: {
-    //     id: user.id,
-    //     email: user.email,
-    //     name: user.name
-    //   }
-    // });
+    const redirectUrl = `${process.env.CLIENT_URL}/social-auth` +
+      `?accessToken=${accessToken}` +
+      `&refreshToken=${refreshToken}` +
+      `&user=${encodeURIComponent(JSON.stringify({
+        id: user._id.toString(),
+        email: user.email,
+        name: user.name,
+        role: user.role
+      }))}`;
 
     return res.redirect(redirectUrl);
 
@@ -315,20 +381,25 @@ router.get("/google/callback", async (req, res) => {
   }
 });
 
-router.get("/microsoft", (req, res) => {
+router.get("/microsoft", (req: Request, res: Response) => {
   const flow = req.query.flow as string | undefined;
   let state: string | undefined;
+  
   if (flow === 'register') {
     state = Buffer.from(JSON.stringify({ flow: 'register' })).toString('base64');
   }
+  
   return res.redirect(getMicrosoftOAuthURL(state));
 });
 
-router.get("/microsoft/callback", async (req, res) => {
+router.get("/microsoft/callback", async (req: Request, res: Response) => {
   const code = req.query.code as string;
 
+  if (!code) {
+    return res.status(400).json({ message: "No authorization code" });
+  }
+
   try {
-    // Exchange code for tokens
     const tokenRes = await fetch("https://login.microsoftonline.com/common/oauth2/v2.0/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded" },
@@ -343,15 +414,19 @@ router.get("/microsoft/callback", async (req, res) => {
 
     const tokenData = await tokenRes.json();
     const { id_token } = tokenData;
-    if (!id_token) return res.status(400).json({ message: "No ID token returned" });
+    
+    if (!id_token) {
+      return res.status(400).json({ message: "No ID token returned" });
+    }
 
-    // Decode Microsoft id_token (same as JWT parsing)
     const payload = JSON.parse(Buffer.from(id_token.split(".")[1], "base64").toString());
     const { email, name, sub } = payload;
 
-    if (!email) return res.status(400).json({ message: "Email missing from Microsoft account" });
+    if (!email) {
+      return res.status(400).json({ message: "Email missing from Microsoft account" });
+    }
 
-    // If the OAuth flow was initiated for registration, redirect to social-register
+    // Check if this is a registration flow
     const rawState = req.query.state as string | undefined;
     if (rawState) {
       try {
@@ -366,56 +441,47 @@ router.get("/microsoft/callback", async (req, res) => {
     }
 
     // Find user by provider
-    let user = await User.findOne({
+    let user = (await User.findOne({
       authProviders: { $elemMatch: { provider: "microsoft", providerId: sub } }
-    });
+    })) as IUser | null;
 
     // If no provider match, find by email
     if (!user) {
-      user = await User.findOne({ email });
+      user = (await User.findOne({ email })) as IUser | null;
 
       if (user) {
-        // Link provider to existing account
         user.authProviders.push({ provider: "microsoft", providerId: sub });
         await user.save();
       } else {
-        // Do not auto-register via Microsoft OAuth. Redirect with error.
         const redirectUrl = `${process.env.CLIENT_URL}/social-auth?error=account_not_found&provider=microsoft&email=${encodeURIComponent(email)}`;
         return res.redirect(redirectUrl);
       }
     }
 
     // Issue JWTs
-    const accessToken = signAccessToken(user.id);
-    const refreshToken = signRefreshToken(user.id);
+    const accessToken = signAccessToken(user._id.toString());
+    const refreshToken = signRefreshToken(user._id.toString());
 
-    // Store refresh token
     await RefreshToken.create({
       user: user._id,
       token: refreshToken,
       expiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 30)
     });
 
-    // return res.json({
-    //   message: "Microsoft login successful",
-    //   accessToken,
-    //   refreshToken,
-    //   user: { id: user.id, email: user.email, name: user.name }
-    // });
+    user.lastLogin = new Date();
+    await user.save();
 
-    // instead of res.json({ accessToken, refreshToken, user })
     const redirectUrl = `${process.env.CLIENT_URL}/social-auth` +
       `?accessToken=${accessToken}` +
       `&refreshToken=${refreshToken}` +
       `&user=${encodeURIComponent(JSON.stringify({
-        id: user.id,
+        id: user._id.toString(),
         email: user.email,
         name: user.name,
         role: user.role
       }))}`;
 
     return res.redirect(redirectUrl);
-
 
   } catch (err) {
     console.error("Microsoft OAuth error:", err);
