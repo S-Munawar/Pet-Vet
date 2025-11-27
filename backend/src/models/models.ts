@@ -94,6 +94,40 @@ UserSchema.pre('save', function () {
 export const User = model('User', UserSchema);
 
 /* ==========================
+   5) ADMIN PROFILE
+========================== */
+const AdminProfileSchema = new Schema({
+  user_id: { 
+    type: Schema.Types.ObjectId, 
+    ref: 'User', 
+    required: true,
+    unique: true
+  },
+  department: {
+    type: String,
+    trim: true,
+    maxlength: 100
+  },
+  createdAt: { 
+    type: Date, 
+    default: Date.now 
+  },
+  updatedAt: { 
+    type: Date, 
+    default: Date.now 
+  }
+});
+
+// Indexes
+AdminProfileSchema.index({ user_id: 1 });
+
+AdminProfileSchema.pre('save', function () {
+  this.updatedAt = new Date();
+});
+
+export const AdminProfile = model('AdminProfile', AdminProfileSchema);
+
+/* ==========================
    2) VET PROFILE
 ========================== */
 const VetProfileSchema = new Schema({
@@ -177,7 +211,65 @@ VetProfileSchema.pre('save', function () {
 export const VetProfile = model('VetProfile', VetProfileSchema);
 
 /* ==========================
-   3) PET OWNER PROFILE
+   3) VET LICENSE
+   Issued by admin, claimed by vets during registration
+========================== */
+const VetLicenseSchema = new Schema({
+  licenseNumber: { 
+    type: String, 
+    required: true, 
+    unique: true,
+    trim: true,
+    uppercase: true
+  },
+  issuedBy: {
+    type: Schema.Types.ObjectId,
+    ref: 'User', // Admin who issued it
+    required: true
+  },
+  issueDate: {
+    type: Date,
+    required: true,
+    default: Date.now
+  },
+  status: {
+    type: String,
+    enum: ['available', 'claimed', 'suspended', 'revoked'],
+    default: 'available',
+    required: true
+  },
+  claimedBy: {
+    type: Schema.Types.ObjectId,
+    ref: 'VetProfile',
+    default: null
+  },
+  claimedAt: {
+    type: Date
+  },
+  createdAt: { 
+    type: Date, 
+    default: Date.now 
+  },
+  updatedAt: { 
+    type: Date, 
+    default: Date.now 
+  }
+});
+
+// Indexes
+VetLicenseSchema.index({ licenseNumber: 1 });
+VetLicenseSchema.index({ status: 1 });
+VetLicenseSchema.index({ claimedBy: 1 });
+VetLicenseSchema.index({ issuedBy: 1 });
+
+VetLicenseSchema.pre('save', function () {
+  this.updatedAt = new Date();
+});
+
+export const VetLicense = model('VetLicense', VetLicenseSchema);
+
+/* ==========================
+   4) PET OWNER PROFILE
 ========================== */
 const PetOwnerProfileSchema = new Schema({
   user_id: { 

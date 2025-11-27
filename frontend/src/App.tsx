@@ -20,6 +20,11 @@ import {
 import { AuthProvider } from './context/AuthContext'
 import SocialAuth from './components/SocialAuth'
 import ProtectedRoute from './components/ProtectedRoute'
+import VerifyEmail from './components/VerifyEmail'
+import AdminRoute from './components/AdminRoute'
+import VetRoute from './components/VetRoute'
+import PetOwnerRoute from './components/PetOwnerRoute'
+import ConsultedPets from './components/ConsultedPets'
 
 function App() {
   return (
@@ -29,16 +34,18 @@ function App() {
         <Navbar />
         <main className="app-main">
           <Routes>
-            <Route path="/" element={<ProtectedRoute><Home /></ProtectedRoute>} />
+            <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/about" element={<About />} />
+            <Route path="/verify-email" element={<VerifyEmail />} />
             <Route path="/social-auth" element={<SocialAuth />} />
-            <Route path="/add-pet" element={<ProtectedRoute><AddPet /></ProtectedRoute>} />
-            <Route path="/select-pet" element={<ProtectedRoute><SelectPet /></ProtectedRoute>} />
-            <Route path="/consult" element={<ProtectedRoute><ConsultVet /></ProtectedRoute>} />
+            <Route path="/add-pet" element={<PetOwnerRoute><AddPet /></PetOwnerRoute>} />
+            <Route path="/select-pet" element={<PetOwnerRoute><SelectPet /></PetOwnerRoute>} />
+            <Route path="/consult" element={<PetOwnerRoute><ConsultVet /></PetOwnerRoute>} />
             <Route path="/ai" element={<ProtectedRoute><AIPetAdvisor /></ProtectedRoute>} />
-            <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+            <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
+            <Route path="/consulted-pets" element={<VetRoute><ConsultedPets /></VetRoute>} />
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/history" element={<ProtectedRoute><PetHistory /></ProtectedRoute>} />
             <Route path="/analyze" element={<ProtectedRoute><Analyze /></ProtectedRoute>} />

@@ -1,7 +1,7 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
-import { User } from '../src/models/models.ts';
+import { AdminProfile, User } from '../src/models/models.ts';
 
 dotenv.config();
 
@@ -31,6 +31,8 @@ async function createAdmin() {
       role: 'admin',
       emailVerified: true
     });
+    // AdminProfile
+    await AdminProfile.create({ user_id: admin._id });
 
     console.log('Admin user created successfully:');
     console.log(`Email: ${adminEmail}`);

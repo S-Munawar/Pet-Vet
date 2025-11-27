@@ -2,7 +2,7 @@ import express, { Router } from "express";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import fetch from "cross-fetch";
-import { User } from "../models/models.ts";
+import { User, AdminProfile, VetProfile, PetOwnerProfile } from "../models/models.ts";
 import { RefreshToken } from "../models/RefreshToken.ts";
 import { mailer } from "../utils/email.ts";
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from "../utils/jwt.ts";
@@ -22,27 +22,42 @@ router.post("/register", async (req, res) => {
     const passwordHash = await bcrypt.hash(password, 12);
     const verificationToken = crypto.randomBytes(32).toString("hex");
 
-    await User.create({
+    const user = await User.create({
       name,
       email,
       password: passwordHash,
       role,
       verificationToken,
-      emailVerified: false,
+      emailVerified: true, // Bypass verification for now
     });
+
+    // Create role-specific profile
+    if (role === 'admin') {
+      await AdminProfile.create({ user_id: user._id });
+    } else if (role === 'vet') {
+      await VetProfile.create({ user_id: user._id });
+    } else if (role === 'pet_owner') {
+      await PetOwnerProfile.create({ user_id: user._id });
+    }
 
     const verifyURL = `${process.env.CLIENT_URL}/verify-email?token=${verificationToken}`;
 
-    await mailer.sendMail({
-      to: email,
-      subject: "Verify your email",
-      html: `<p>Hello ${name},</p>
-             <p>Please verify your email by clicking:</p>
-             <a href="${verifyURL}" target="_blank">Verify Email</a>`
-    });
+    try {
+      await mailer.sendMail({
+        to: email,
+        subject: "Verify your email",
+        html: `<p>Hello ${name},</p>
+               <p>Please verify your email by clicking:</p>
+               <a href="${verifyURL}" target="_blank">Verify Email</a>`
+      });
+      console.log('Verification email sent to:', email);
+    } catch (emailError) {
+      console.error('Email sending failed:', emailError);
+      console.log('Manual verification URL:', verifyURL);
+    }
 
     return res.status(201).json({
-      message: "Registration successful! Check your email for verification link."
+      message: "Registration successful! You can now login."
     });
 
   } catch (err) {
@@ -66,6 +81,20 @@ router.get("/verify-email", async (req, res) => {
   await user.save();
 
   return res.json({ message: "Email verified successfully!" });
+});
+
+// Temporary manual verification for testing
+router.post("/manual-verify", async (req, res) => {
+  const { email } = req.body;
+  
+  const user = await User.findOne({ email });
+  if (!user) return res.status(400).json({ message: "User not found" });
+
+  user.emailVerified = true;
+  user.verificationToken = null;
+  await user.save();
+
+  return res.json({ message: "Email verified manually!" });
 });
 
 router.post("/login", async (req, res) => {
@@ -195,7 +224,7 @@ router.get("/google/callback", async (req, res) => {
     });
 
     // Redirect or respond JSON
-    const redirectUrl = `${process.env.CLIENT_URL}/social-auth` +
+    const redirectUrl = `${process.env.CLIENT_URL}` +
     `?accessToken=${accessToken}` +
     `&refreshToken=${refreshToken}` +
     `&user=${encodeURIComponent(JSON.stringify({
@@ -301,7 +330,7 @@ router.get("/microsoft/callback", async (req, res) => {
     // });
 
     // instead of res.json({ accessToken, refreshToken, user })
-    const redirectUrl = `${process.env.CLIENT_URL}/social-auth` +
+    const redirectUrl = `${process.env.CLIENT_URL}` +
       `?accessToken=${accessToken}` +
       `&refreshToken=${refreshToken}` +
       `&user=${encodeURIComponent(JSON.stringify({

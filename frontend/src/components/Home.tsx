@@ -1,35 +1,84 @@
 import React from 'react'
 import { Link } from 'react-router-dom'
-import AuthTest from './AuthTest'
+import { useAuth } from '../hooks/useAuth'
 
 const Home = () => {
+  const { user } = useAuth()
+  
   return (
-    <div className="container">
-      <div className="mt-8">
-        <div className="rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 text-white p-8 shadow-lg">
-          <h1 className="text-3xl font-bold">Welcome to Pet-Vet</h1>
-          <p className="mt-2 text-sm opacity-90">Your pet's health, simplified. Manage pets, consult vets, and get AI advice.</p>
-          <div className="mt-4 flex gap-3">
-            <Link to="/add-pet" className="bg-white text-blue-600 px-4 py-2 rounded-md font-semibold">Add Pet</Link>
-            <Link to="/consult" className="bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-md">Consult a Vet</Link>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
+      {/* Hero Section */}
+      <div className="relative overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
+          <div className="text-center">
+            <h1 className="text-5xl md:text-6xl font-bold text-gray-900 mb-6">
+              Welcome to <span className="text-blue-600">Pet-Vet</span>
+            </h1>
+            <p className="text-xl text-gray-600 mb-8 max-w-3xl mx-auto">
+              Your pet's health, simplified. Manage pets, consult veterinarians, and get AI-powered health insights all in one place.
+            </p>
+            
+            {user ? (
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Link 
+                  to="/add-pet" 
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg font-semibold text-lg transition duration-200 transform hover:scale-105 shadow-lg"
+                >
+                  Add Your Pet
+                </Link>
+                <Link 
+                  to="/consult" 
+                  className="bg-green-600 hover:bg-green-700 text-white px-8 py-4 rounded-lg font-semibold text-lg transition duration-200 transform hover:scale-105 shadow-lg"
+                >
+                  Consult a Vet
+                </Link>
+              </div>
+            ) : (
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Link 
+                  to="/register" 
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 rounded-lg font-semibold text-lg transition duration-200 transform hover:scale-105 shadow-lg"
+                >
+                  Get Started
+                </Link>
+                <Link 
+                  to="/about" 
+                  className="bg-white hover:bg-gray-50 text-blue-600 border-2 border-blue-600 px-8 py-4 rounded-lg font-semibold text-lg transition duration-200 transform hover:scale-105 shadow-lg"
+                >
+                  Learn More
+                </Link>
+              </div>
+            )}
           </div>
         </div>
+      </div>
 
-        <section className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div className="card">
-            <h3 className="font-semibold text-slate-900">Pet Management</h3>
-            <p className="text-sm text-slate-600 mt-2">Add and manage pets, view histories, and track health.</p>
+      {/* Features Section */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+        <div className="text-center mb-16">
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">Everything Your Pet Needs</h2>
+          <p className="text-lg text-gray-600">Comprehensive pet care solutions at your fingertips</p>
+        </div>
+        
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          <div className="bg-white rounded-xl shadow-lg p-8 hover:shadow-xl transition duration-300 transform hover:-translate-y-2">
+            <div className="text-4xl mb-4">🐶</div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-3">Pet Management</h3>
+            <p className="text-gray-600">Add and manage your pets, track their health records, and monitor their well-being over time.</p>
           </div>
-          <div className="card">
-            <h3 className="font-semibold text-slate-900">Consultations</h3>
-            <p className="text-sm text-slate-600 mt-2">Schedule vet visits and keep in touch with professionals.</p>
+          
+          <div className="bg-white rounded-xl shadow-lg p-8 hover:shadow-xl transition duration-300 transform hover:-translate-y-2">
+            <div className="text-4xl mb-4">👩‍⚕️</div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-3">Vet Consultations</h3>
+            <p className="text-gray-600">Connect with qualified veterinarians for professional advice and schedule appointments easily.</p>
           </div>
-          <div className="card">
-            <h3 className="font-semibold text-slate-900">AI Advisor</h3>
-            <p className="text-sm text-slate-600 mt-2">Ask the AI for care recommendations and preliminary analysis.</p>
+          
+          <div className="bg-white rounded-xl shadow-lg p-8 hover:shadow-xl transition duration-300 transform hover:-translate-y-2">
+            <div className="text-4xl mb-4">🤖</div>
+            <h3 className="text-xl font-semibold text-gray-900 mb-3">AI Health Advisor</h3>
+            <p className="text-gray-600">Get instant AI-powered health insights and recommendations for your pet's care.</p>
           </div>
-        </section>
-        <AuthTest />
+        </div>
       </div>
     </div>
   )

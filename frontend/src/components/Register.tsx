@@ -23,8 +23,8 @@ const Register: React.FC = () => {
 
     try {
       await register({ name, email, password, role });
-      setSuccess('Registered successfully! Please check your email to verify.');
-      setTimeout(() => navigate('/login'), 2000);
+      setSuccess('Registration successful!');
+      navigate('/');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Registration failed');
     } finally {
@@ -33,50 +33,87 @@ const Register: React.FC = () => {
   };
 
   return (
-    <div>
-      <h1>Create account</h1>
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-blue-100 py-12 px-4 sm:px-6 lg:px-8">
+      <div className="max-w-md w-full space-y-8">
+        <div className="text-center">
+          <h2 className="text-3xl font-bold text-gray-900 mb-2">Create Account</h2>
+          <p className="text-gray-600">Join Pet-Vet to manage your pet's health</p>
+        </div>
+        
+        {error && (
+          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+            {error}
+          </div>
+        )}
+        
+        {success && (
+          <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-lg">
+            {success}
+          </div>
+        )}
 
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-      {success && <p style={{ color: 'green' }}>{success}</p>}
+        <form className="space-y-6" onSubmit={handleSubmit}>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
+            <input
+              value={name}
+              onChange={e => setName(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition duration-200"
+              placeholder="Enter your full name"
+              required
+            />
+          </div>
+          
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Account Type</label>
+            <select 
+              value={role} 
+              onChange={e => setRole(e.target.value as 'vet' | 'pet_owner')}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition duration-200"
+            >
+              <option value="pet_owner">Pet Owner</option>
+              <option value="vet">Veterinarian</option>
+            </select>
+          </div>
 
-      <form onSubmit={handleSubmit}>
-        <input
-          value={name}
-          onChange={e => setName(e.target.value)}
-          placeholder="Full name"
-          required
-        />
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+            <input
+              type="email"
+              value={email}
+              onChange={e => setEmail(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition duration-200"
+              placeholder="Enter your email"
+              required
+            />
+          </div>
 
-        <label htmlFor="role">Role</label>
-        <select
-          id="role"
-          value={role}
-          onChange={e => setRole(e.target.value as 'vet' | 'pet_owner')}
-        >
-          <option value="pet_owner">Pet Owner</option>
-          <option value="vet">Veterinarian</option>
-        </select>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent transition duration-200"
+              placeholder="Create a password"
+              required
+            />
+          </div>
 
-        <input
-          type="email"
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-          placeholder="Email"
-          required
-        />
-
-        <input
-          type="password"
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          placeholder="Password"
-          required
-        />
-
-        <button type="submit" disabled={loading}>
-          {loading ? 'Creating account…' : 'Register'}
-        </button>
-      </form>
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-green-600 hover:bg-green-700 disabled:bg-green-400 text-white font-semibold py-3 px-4 rounded-lg transition duration-200 transform hover:scale-105"
+          >
+            {loading ? 'Creating Account...' : 'Create Account'}
+          </button>
+        </form>
+        
+        <p className="text-center text-sm text-gray-600">
+          Already have an account?{' '}
+          <a href="/login" className="font-medium text-green-600 hover:text-green-500">Sign in</a>
+        </p>
+      </div>
     </div>
   );
 };
