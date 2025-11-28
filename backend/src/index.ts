@@ -7,6 +7,7 @@ import licenseRoutes from './routes/licenses.ts';
 import agentRoutes from './routes/agent.ts';
 import vetsRoutes from './routes/vets.ts';
 import petsRoutes from './routes/pets.ts';
+import analyzerRoutes from './routes/analyzer.ts';
 import { devCors } from './middlewares/cors.ts';
 
 dotenv.config();
@@ -21,6 +22,7 @@ app.use('/licenses', licenseRoutes);
 app.use('/vets', vetsRoutes);
 app.use('/pets', petsRoutes);
 app.use('/agent', agentRoutes);
+app.use('/analyzer', analyzerRoutes);
 
 app.get('/', (req: Request, res: Response) => {
   res.send('Hello from Express + TypeScript!');

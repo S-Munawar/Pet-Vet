@@ -5,7 +5,8 @@ import { useNavigate } from 'react-router-dom'
 type Pet = {
   _id: string
   name: string
-  species: string
+  species: 'cat' | 'dog'
+  breed?: string
   dateOfBirth?: string
   owner_id?: string
   ownerName?: string | null
@@ -102,7 +103,7 @@ const SelectPet = () => {
                   <div className="text-xs text-slate-400">DOB: {dob ? dob.toLocaleDateString() : '—'}</div>
                   {pet.ownerName && <div className="text-xs text-slate-400">Owner: {pet.ownerName} {pet.ownerEmail ? `(${pet.ownerEmail})` : ''}</div>}
                   <div className="mt-2 flex gap-2">
-                    <button onClick={() => navigate(`/analyze?petId=${pet._id}`)} className="text-sm bg-blue-600 text-white px-3 py-1 rounded-md">Analyze</button>
+                    <button onClick={() => navigate(`/analyze/form`, { state: { pet: { id: pet._id, name: pet.name, species: pet.species as 'cat' | 'dog', breed: pet.breed || 'Unknown', dateOfBirth: pet.dateOfBirth || new Date().toISOString() } } })} className="text-sm bg-blue-600 text-white px-3 py-1 rounded-md">Analyze</button>
                     <button onClick={() => navigate(`/history?petId=${pet._id}`)} className="text-sm bg-gray-200 px-3 py-1 rounded-md">History</button>
                   </div>
                 </li>

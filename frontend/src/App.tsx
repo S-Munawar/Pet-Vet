@@ -14,6 +14,8 @@ import {
   Profile,
   PetHistory,
   Analyze,
+  HealthAnalysisForm,
+  AnalysisResults,
   About,
   Navbar,
   Footer,
@@ -53,6 +55,8 @@ function App() {
             <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
             <Route path="/history" element={<ProtectedRoute><PetHistory /></ProtectedRoute>} />
             <Route path="/analyze" element={<ProtectedRoute><Analyze /></ProtectedRoute>} />
+            <Route path="/analyze/form" element={<ProtectedRoute><HealthAnalysisForm /></ProtectedRoute>} />
+            <Route path="/analyze/results" element={<ProtectedRoute><AnalysisResults /></ProtectedRoute>} />
           </Routes>
         </main>
         <Footer />

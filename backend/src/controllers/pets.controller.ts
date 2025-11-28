@@ -6,10 +6,10 @@ export async function createPetHandler(req: Request, res: Response) {
     const userId = (req as any).userId as string | undefined;
     if (!userId) return res.status(401).json({ message: 'Unauthorized' });
 
-    const { name, species, dateOfBirth } = req.body as { name?: string; species?: string; dateOfBirth?: string };
+    const { name, species, breed, dateOfBirth } = req.body as { name?: string; species?: string; breed?: string; dateOfBirth?: string };
 
-    if (!name || !species || !dateOfBirth) {
-      return res.status(400).json({ message: 'Missing required fields: name, species, dateOfBirth' });
+    if (!name || !species || !breed || !dateOfBirth) {
+      return res.status(400).json({ message: 'Missing required fields: name, species, breed, dateOfBirth' });
     }
 
     const user = await User.findById(userId);
@@ -24,6 +24,7 @@ export async function createPetHandler(req: Request, res: Response) {
       owner_id: ownerProfile._id,
       name,
       species,
+      breed,
       dateOfBirth: new Date(dateOfBirth),
     });
 
@@ -69,6 +70,7 @@ export async function listPetsHandler(req: Request, res: Response) {
       _id: p._id?.toString(),
       name: p.name,
       species: p.species,
+      breed: p.breed,
       dateOfBirth: p.dateOfBirth,
       owner_id: p.owner_id?._id?.toString(),
       ownerName: p.owner_id?.user_id?.name || null,
