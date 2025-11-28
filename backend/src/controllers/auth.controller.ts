@@ -11,7 +11,7 @@ import { getMicrosoftOAuthURL } from '../utils/microsoft.ts';
 
 export async function registerHandler(req: Request, res: Response) {
   try {
-    const { name, email, password, role, licenseNumber, authProvider }: IRegisterRequest = req.body;
+    const { name, email, password, role, licenseNumber, specialization, experienceYears, clinicName, clinicAddress, authProvider }: IRegisterRequest = req.body;
     if (!name || !email || !role) return res.status(400).json({ message: 'Missing required fields' });
     if (role === 'vet' && !licenseNumber) return res.status(400).json({ message: 'License number required for vets' });
     const exists = await User.findOne({ email });
@@ -27,8 +27,19 @@ export async function registerHandler(req: Request, res: Response) {
     else if (role === 'vet') {
       const license = await VetLicense.findOne({ licenseNumber: licenseNumber!.toUpperCase(), status: 'available' });
       if (!license) { await User.findByIdAndDelete(user._id); return res.status(400).json({ message: 'Invalid or already claimed license' }); }
-      const vetProfile = (await VetProfile.create({ user_id: user._id, licenseNumber: licenseNumber!.toUpperCase() })) as IVetProfile;
-      license.status = 'claimed'; license.claimedBy = vetProfile._id; license.claimedAt = new Date(); await license.save();
+      
+      const vetProfileData: any = { 
+        user_id: user._id, 
+        licenseNumber: licenseNumber!.toUpperCase()
+      };
+      
+      if (specialization) vetProfileData.specialization = specialization;
+      if (experienceYears) vetProfileData.experienceYears = experienceYears;
+      if (clinicName) vetProfileData.clinicName = clinicName;
+      if (clinicAddress) vetProfileData.clinicAddress = clinicAddress;
+      
+      const vetProfile = await VetProfile.create(vetProfileData);
+      license.status = 'claimed'; license.claimedBy = (vetProfile as any)._id; license.claimedAt = new Date(); await license.save();
     } else if (role === 'pet_owner') {
       await PetOwnerProfile.create({ user_id: user._id });
     }

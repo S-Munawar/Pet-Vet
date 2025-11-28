@@ -8,6 +8,7 @@ import agentRoutes from './routes/agent.ts';
 import vetsRoutes from './routes/vets.ts';
 import petsRoutes from './routes/pets.ts';
 import analyzerRoutes from './routes/analyzer.ts';
+import healthRecordsRoutes from './routes/health-records.ts';
 import { devCors } from './middlewares/cors.ts';
 
 dotenv.config();
@@ -23,6 +24,7 @@ app.use('/vets', vetsRoutes);
 app.use('/pets', petsRoutes);
 app.use('/agent', agentRoutes);
 app.use('/analyzer', analyzerRoutes);
+app.use('/health-records', healthRecordsRoutes);
 
 app.get('/', (req: Request, res: Response) => {
   res.send('Hello from Express + TypeScript!');

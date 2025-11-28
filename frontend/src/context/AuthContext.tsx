@@ -58,8 +58,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       throw new Error(err.message || 'Login failed');
     }
 
-    const data: AuthResponse = await res.json();
-    setAuthFromTokens(data);
+    const response = await res.json();
+    // Extract data from backend response structure { success, message, data: { accessToken, refreshToken, user } }
+    const authData = response.data || response;
+    const authResponse: AuthResponse = {
+      accessToken: authData.accessToken,
+      refreshToken: authData.refreshToken,
+      user: authData.user
+    };
+    setAuthFromTokens(authResponse);
   };
 
   const register = async (data: RegisterRequest) => {
@@ -73,11 +80,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       const err = await res.json();
       throw new Error(err.message || 'Registration failed');
     }
-    // If backend returned tokens (social registration / immediate login), use them
-    const payload = await res.json().catch(() => null);
-    if (payload && payload.accessToken && payload.refreshToken) {
-      setAuthFromTokens(payload as AuthResponse);
-    }
+    
+    const response = await res.json();
+    // Extract data from backend response structure { success, message, data: { accessToken, refreshToken, user } }
+    const authData = response.data || response;
+    const authResponse: AuthResponse = {
+      accessToken: authData.accessToken,
+      refreshToken: authData.refreshToken,
+      user: authData.user
+    };
+    setAuthFromTokens(authResponse);
   };
   
   const refreshAccessToken = async (): Promise<string | null> => {

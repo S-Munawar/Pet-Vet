@@ -246,6 +246,16 @@ export interface IRegisterRequest {
   password?: string; // Optional for social login
   role: 'vet' | 'pet_owner' | 'admin';
   licenseNumber?: string; // Required for vets
+  specialization?: string;
+  experienceYears?: number;
+  clinicName?: string;
+  clinicAddress?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    country?: string;
+  };
   authProvider?: IAuthProvider; // For social login
 }
 

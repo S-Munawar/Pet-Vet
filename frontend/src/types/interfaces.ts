@@ -18,6 +18,16 @@ export interface RegisterRequest {
   password: string;
   role: 'vet' | 'pet_owner' | 'admin';
   licenseNumber?: string;
+  specialization?: string;
+  experienceYears?: number;
+  clinicName?: string;
+  clinicAddress?: {
+    street?: string;
+    city?: string;
+    state?: string;
+    zipCode?: string;
+    country?: string;
+  };
   authProvider?: {
     provider: 'google' | 'microsoft';
     providerId: string;
