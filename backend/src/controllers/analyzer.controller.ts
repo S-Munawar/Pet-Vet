@@ -1,6 +1,8 @@
 import type { Request, Response } from 'express';
 import { mlService } from '../services/ml.service.ts';
+import { healthRecordsService } from '../services/health-records.service.ts';
 import type { HealthAnalysisInput, MLAnalysisRequest } from '../types/ml.types.ts';
+import mongoose from 'mongoose';
 
 /**
  * Analyzer Controller
@@ -59,7 +61,33 @@ export const analyzePetHealth = async (req: Request, res: Response): Promise<voi
       return;
     }
 
-    res.status(200).json(result);
+    // Store analysis result in health records
+    // Note: req.user should be populated by auth middleware
+    const userId = (req as any).user?.id || (req as any).userId || '000000000000000000000000';
+    const recordsResult = await healthRecordsService.storeAnalysisResult(
+      new mongoose.Types.ObjectId(pet_id),
+      new mongoose.Types.ObjectId(userId),
+      species as 'cat' | 'dog',
+      input_data,
+      result.result!
+    );
+
+    if (!recordsResult.success) {
+      console.warn(`[Analyzer Controller] Warning - Analysis succeeded but records storage failed:`, recordsResult.error);
+      // Return analysis result but with warning about storage
+      res.status(200).json({
+        ...result,
+        storage_warning: recordsResult.error,
+      });
+      return;
+    }
+
+    // Return successful result with record IDs
+    res.status(200).json({
+      ...result,
+      commonRecordId: recordsResult.commonRecordId,
+      speciesRecordId: recordsResult.speciesRecordId,
+    });
   } catch (error) {
     console.error('[Analyzer Controller] Unexpected error:', error);
     res.status(500).json({

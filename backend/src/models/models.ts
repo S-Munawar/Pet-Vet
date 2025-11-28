@@ -571,29 +571,29 @@ const CatHealthRecordSchema = new Schema<ICatHealthRecord>({
   },
   vitals: {
     weight: {
-      value: { type: Number, required: true, min: 0, max: 1000 },
-      unit: { type: String, enum: ['kg', 'lbs'], default: 'lbs' }
+      value: { type: Number, required: true, min: 0.1, max: 20 },
+      unit: { type: String, enum: ['kg', 'lbs'], default: 'kg' }
     },
     temperature: {
-      value: { type: Number, required: true, min: 90, max: 110 },
-      unit: { type: String, default: 'F' }
+      value: { type: Number, required: true, min: 35.0, max: 42.0 },
+      unit: { type: String, default: 'C' }
     },
     heartRate: {
-      value: { type: Number, required: true, min: 20, max: 250 },
+      value: { type: Number, required: true, min: 50, max: 300 },
       unit: { type: String, default: 'bpm' }
     },
     respiratoryRate: {
-      value: { type: Number, required: true, min: 5, max: 100 },
+      value: { type: Number, required: true, min: 5, max: 60 },
       unit: { type: String, default: 'bpm' }
     },
     bloodPressure: {
-      systolic: { type: Number, min: 50, max: 250 },
-      diastolic: { type: Number, min: 30, max: 180 },
+      systolic: { type: Number, min: 80, max: 250 },
+      diastolic: { type: Number, min: 40, max: 160 },
       unit: { type: String, default: 'mmHg' }
     }
   },
   catMetrics: {
-    bodyConditionScore: { type: Number, min: 1, max: 9 },
+    bodyConditionScore: { type: Number, min: 1, max: 6 },
     hydrationStatus: {
       type: String,
       enum: ['normal', 'mild_dehydration', 'moderate_dehydration', 'severe_dehydration']

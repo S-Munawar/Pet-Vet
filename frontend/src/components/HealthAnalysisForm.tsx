@@ -41,7 +41,7 @@ const HealthAnalysisForm = () => {
   const pet = state?.pet;
 
   const [formSections, setFormSections] = useState<FormSection[]>([]);
-  const [formData, setFormData] = useState<Record<string, any>>({});
+  const [formData, setFormData] = useState<Record<string, unknown>>({});
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -52,9 +52,9 @@ const HealthAnalysisForm = () => {
       // Calculate age in months from dateOfBirth
       const dobString = typeof pet.dateOfBirth === 'string' 
         ? pet.dateOfBirth 
-        : (pet.dateOfBirth as any).toISOString?.();
+        : (pet.dateOfBirth as unknown as { toISOString?: () => string }).toISOString?.();
       
-      const dob = new Date(dobString);
+      const dob = new Date(dobString ?? '');
       const now = new Date();
       
       console.log('[HealthAnalysisForm] Pet:', pet);
@@ -141,24 +141,24 @@ const HealthAnalysisForm = () => {
   // Handle input changes
   const handleInputChange = (
     fieldName: string,
-    value: any,
+    value: unknown,
     fieldType: string
   ) => {
     setFormData((prev) => {
       if (fieldType === 'checkbox') {
         return { ...prev, [fieldName]: value };
-      } else if (fieldType === 'textarea' && value.includes(',')) {
+      } else if (fieldType === 'textarea' && typeof value === 'string' && value.includes(',')) {
         // Parse comma-separated values into arrays
         return {
           ...prev,
-          [fieldName]: value.split(',').map((item) => item.trim()),
+          [fieldName]: value.split(',').map((item: string) => item.trim()),
         };
       } else if (fieldName === 'vaccinations') {
         // Parse JSON vaccination data
         try {
           return {
             ...prev,
-            [fieldName]: JSON.parse(value),
+            [fieldName]: JSON.parse(typeof value === 'string' ? value : String(value)),
           };
         } catch {
           return { ...prev, [fieldName]: value };
@@ -197,28 +197,28 @@ const HealthAnalysisForm = () => {
       // Calculate age in months from dateOfBirth
       const dobString = typeof pet.dateOfBirth === 'string' 
         ? pet.dateOfBirth 
-        : (pet.dateOfBirth as any).toISOString?.();
-      const dob = new Date(dobString);
+        : (pet.dateOfBirth as unknown as { toISOString?: () => string }).toISOString?.();
+      const dob = new Date(dobString || '');
       const now = new Date();
       const ageInMonths = Math.max(0, Math.floor((now.getTime() - dob.getTime()) / (1000 * 60 * 60 * 24 * 30.44)));
 
       // Prepare API request
       const analysisInput: CatHealthAnalysisInput = {
-        breed: formData.breed || pet.breed,
+        breed: String(formData.breed || pet.breed),
         age_in_months: ageInMonths,
-        weight_kg: parseFloat(formData.weight_kg) || 0,
-        temperature: parseFloat(formData.temperature) || 0,
-        heart_rate: parseInt(formData.heart_rate) || 0,
-        respiratory_rate: parseInt(formData.respiratory_rate) || 0,
-        blood_pressure_systolic: parseInt(formData.blood_pressure_systolic) || 0,
-        blood_pressure_diastolic: parseInt(formData.blood_pressure_diastolic) || 0,
-        body_condition_score: parseInt(formData.body_condition_score) || 5,
-        hydration_status: formData.hydration_status || 'normal',
-        mucous_membrane_color: formData.mucous_membrane_color || 'pink',
-        coat_condition: formData.coat_condition || 'healthy',
-        appetite: formData.appetite || 'normal',
-        energy_level: formData.energy_level || 'normal',
-        aggression: formData.aggression || 'none',
+        weight_kg: parseFloat(String(formData.weight_kg || 0)),
+        temperature: parseFloat(String(formData.temperature || 0)),
+        heart_rate: parseInt(String(formData.heart_rate || 0)),
+        respiratory_rate: parseInt(String(formData.respiratory_rate || 0)),
+        blood_pressure_systolic: parseInt(String(formData.blood_pressure_systolic || 0)),
+        blood_pressure_diastolic: parseInt(String(formData.blood_pressure_diastolic || 0)),
+        body_condition_score: parseInt(String(formData.body_condition_score || 5)),
+        hydration_status: (formData.hydration_status as 'normal' | 'mild_dehydration' | 'severe_dehydration') || 'normal',
+        mucous_membrane_color: (formData.mucous_membrane_color as 'pink' | 'pale' | 'yellow') || 'pink',
+        coat_condition: (formData.coat_condition as 'healthy' | 'dull' | 'matted' | 'patchy') || 'healthy',
+        appetite: (formData.appetite as 'normal' | 'increased' | 'decreased' | 'absent') || 'normal',
+        energy_level: (formData.energy_level as 'normal' | 'hyperactive' | 'lethargic') || 'normal',
+        aggression: (formData.aggression as 'none' | 'mild' | 'moderate' | 'severe') || 'none',
         vomiting: formData.vomiting === true,
         diarrhea: formData.diarrhea === true,
         coughing: formData.coughing === true,
@@ -304,7 +304,7 @@ const HealthAnalysisForm = () => {
         {/* Header */}
         <div className="mb-8 pb-6 border-b border-slate-200">
           <button
-            onClick={() => navigate('/analyze')}
+            onClick={() => navigate('/select-pet')}
             className="text-indigo-600 hover:text-indigo-700 text-sm font-medium mb-4 flex items-center gap-1"
           >
             ← Back to Pet Selection
@@ -332,8 +332,8 @@ const HealthAnalysisForm = () => {
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-8">
-          {/* Hidden input to ensure age is submitted */}
-          <input type="hidden" name="age_in_months" value={formData.age_in_months || ''} />
+        {/* Hidden input to ensure age is submitted */}
+        <input type="hidden" name="age_in_months" value={String(formData.age_in_months || '')} />
           {formSections.map((section, sectionIndex) => (
             <div key={sectionIndex} className="mb-8">
               <div className="mb-6">
@@ -360,7 +360,7 @@ const HealthAnalysisForm = () => {
                       <select
                         id={`field_${field.name}`}
                         name={field.name}
-                        value={formData[field.name] || ''}
+                        value={String(formData[field.name] || '')}
                         onChange={(e) =>
                           handleInputChange(field.name, e.target.value, field.type)
                         }
@@ -384,7 +384,7 @@ const HealthAnalysisForm = () => {
                           id={`field_${field.name}`}
                           type="number"
                           name={field.name}
-                          value={formData[field.name] !== undefined ? formData[field.name] : ''}
+                          value={String(formData[field.name] ?? '')}
                           onChange={(e) =>
                             handleInputChange(
                               field.name,
@@ -404,7 +404,7 @@ const HealthAnalysisForm = () => {
                         {(field.min !== undefined || field.max !== undefined) && (
                           <p className="text-xs text-slate-500 mt-1.5">
                             Range: {field.min ?? '—'} to {field.max ?? '—'}
-                            {field.step && field.step !== '1' ? ` (step: ${field.step})` : ''}
+                            {field.step && String(field.step) !== '1' ? ` (step: ${field.step})` : ''}
                           </p>
                         )}
                       </div>
@@ -436,8 +436,8 @@ const HealthAnalysisForm = () => {
                           name={field.name}
                           value={
                             Array.isArray(formData[field.name])
-                              ? formData[field.name].join(', ')
-                              : formData[field.name] || ''
+                              ? (formData[field.name] as string[]).join(', ')
+                              : String(formData[field.name] || '')
                           }
                           onChange={(e) =>
                             handleInputChange(field.name, e.target.value, field.type)

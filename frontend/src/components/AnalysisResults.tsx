@@ -80,7 +80,7 @@ const AnalysisResults = () => {
       {/* Header */}
       <div className="mb-6">
         <button
-          onClick={() => navigate('/analyze')}
+          onClick={() => navigate('/select-pet')}
           className="text-indigo-600 hover:text-indigo-700 text-sm font-medium mb-4"
         >
           ← Back to Pet Selection
@@ -230,7 +230,7 @@ const AnalysisResults = () => {
       {/* Action Buttons */}
       <div className="flex gap-3 mt-8">
         <button
-          onClick={() => navigate('/analyze')}
+          onClick={() => navigate('/select-pet')}
           className="btn btn-primary"
         >
           Analyze Another Pet

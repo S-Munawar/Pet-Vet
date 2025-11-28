@@ -87,21 +87,21 @@ const Analyze = () => {
     );
   }
 
-  if (pets.length === 0) {
-    return (
-      <div className="container max-w-3xl mx-auto mt-8">
-        <div className="card p-8 text-center">
-          <p className="text-slate-600 mb-4">No pets found. Please add a pet first.</p>
-          <button
-            onClick={() => navigate('/add-pet')}
-            className="btn btn-primary"
-          >
-            Add Pet
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // if (pets.length === 0) {
+  //   return (
+  //     <div className="container max-w-3xl mx-auto mt-8">
+  //       <div className="card p-8 text-center">
+  //         <p className="text-slate-600 mb-4">No pets found. Please add a pet first.</p>
+  //         <button
+  //           onClick={() => navigate('/add-pet')}
+  //           className="btn btn-primary"
+  //         >
+  //           Add Pet
+  //         </button>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="container max-w-3xl mx-auto mt-8">
