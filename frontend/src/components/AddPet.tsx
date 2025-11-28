@@ -5,7 +5,7 @@ const AddPet = () => {
   const { accessToken, refreshAccessToken } = useAuth()
   const [name, setName] = useState('')
   const [species, setSpecies] = useState('')
-  const [age, setAge] = useState('')
+  const [dateOfBirth, setDateOfBirth] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -22,9 +22,17 @@ const AddPet = () => {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${tokenToUse}`,
       },
-      body: JSON.stringify({ name, species, age }),
+      body: JSON.stringify({ name, species, dateOfBirth }),
     })
-    console.log('Pet added:', await res.json())
+
+    if (!res.ok) {
+      const text = await res.text()
+      console.error('Failed to add pet:', res.status, text)
+      return
+    }
+
+    const created = await res.json()
+    console.log('Pet added:', created)
   }
 
   return (
@@ -41,8 +49,8 @@ const AddPet = () => {
             <input id="species" value={species} onChange={(e) => setSpecies(e.target.value)} className="w-full border rounded-md px-3 py-2" />
           </div>
           <div>
-            <label htmlFor="age" className="block text-sm text-slate-700 mb-1">Age</label>
-            <input id="age" type="number" value={age} onChange={(e) => setAge(e.target.value)} className="w-full border rounded-md px-3 py-2" />
+            <label htmlFor="dateOfBirth" className="block text-sm text-slate-700 mb-1">Date of Birth</label>
+            <input id="dateOfBirth" type="date" value={dateOfBirth} onChange={(e) => setDateOfBirth(e.target.value)} className="w-full border rounded-md px-3 py-2" />
           </div>
           <div className="flex justify-end">
             <button type="submit" className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md">Add Pet</button>

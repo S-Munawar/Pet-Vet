@@ -1,7 +1,7 @@
 // utils/jwt.ts
 import jwt from "jsonwebtoken";
 
-export const ACCESS_TOKEN_TTL = "15m";
+export const ACCESS_TOKEN_TTL = "60m";
 export const REFRESH_TOKEN_TTL = "30d"; // can adjust
 
 export function signAccessToken(userId: string) {
